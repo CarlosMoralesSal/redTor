@@ -30,7 +30,7 @@ from urllib.parse import quote
 from urllib.parse import unquote
 from bs4 import BeautifulSoup
 from urllib3.exceptions import ProtocolError
-
+from lxml.html import fromstring
 import mysql.connector
 
 mydb = mysql.connector.connect(
@@ -86,28 +86,27 @@ with open('onion_list.txt') as file:
      now = datetime.now()
      if count>0:
       for row in record:
-         r=requests.head("http://"+line.rstrip(),proxies=proxies, headers=random_headers())
-         print(r.status_code)
-         response = requests.get("http://"+line.rstrip(), proxies=proxies, headers=random_headers())
+         r=requests.get("http://"+line.rstrip(),proxies=proxies, headers=random_headers())
+         #print(r)
+         #print(r.text)
+         #response = requests.get("http://"+line.rstrip(), proxies=proxies, headers=random_headers())
          #print(response)
-         soup = BeautifulSoup(response.text, 'html.parser')
-         for title in soup.find_all('title'):
-           print(title.get_text())
-           sql= "UPDATE onion SET title=%s,updated_at=%s,state=1 WHERE id=%s"
-           val=(title.get_text(),now.strftime('%Y-%m-%d %H:%M:%S'),row[0])
-           mycursor.execute(sql,val)
-           mydb.commit()
-           print("Valor actualizado correctamente ",val)
-         meta = soup.find_all('meta')
-         for tag in meta:
-            if 'name' in tag.attrs.keys() and tag.attrs['name'].strip().lower() in ['description']:
-             print('CONTENT :', tag.attrs['content'])
-             sql="UPDATE onion SET description=%s,updated_at=%s WHERE id=%s"
-             val=(tag.attrs['content'],now.strftime('%Y-%m-%d %H:%M:%S'),row[0])
-             mycursor.execute(sql,val)
-             mydb.commit()
-             print("Valor actualizado correctamente ",val)
-
+         doc=fromstring(r.text)
+         #print(doc)
+         #root = lxml.html.fromstring(r.text)
+         #print("Esto es ",root)
+         language_construct = doc.xpath("//html/@lang") # this xpath is reliable(in long-term), since this is a standard construct.
+         print(language_construct)
+         language = "Not found in page source"
+         if language_construct:
+            language = language_construct[0]
+         print(language)
+         sql="UPDATE onion SET lang=%s WHERE id=%s"
+         val=(language,row[0])
+         print(val)
+         mycursor.execute(sql,val)
+         mydb.commit()
+         print("Valor actualizado correctamente")
    except:
      print("Error con ",line.rstrip())
      sql="UPDATE onion SET state=0,updated_at=%s WHERE id=%s"

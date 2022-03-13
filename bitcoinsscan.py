@@ -2,10 +2,18 @@ import glob
 import json
 import shodan
 import time
- 
-#shodan_client = shodan.Shodan("SxaULPrsq9QnWHCi70G66riC87JdQQCk")
- 
+import mysql.connector 
+import requests
+
+bitcoinabuse_api=""
+mydb = mysql.connector.connect(
+  host="localhost",
+  user="root",
+  password="password",
+  database="onionalert"
+) 
 file_list = glob.glob("onionscan_results/*.json")
+mycursor = mydb.cursor()
  
 bitcoin_list = []
 bitcoin_to_mint = {}
@@ -17,6 +25,23 @@ for json_file in file_list:
  
         if scan_result['identifierReport']['bitcoinAddresses']:
             print("%s => %s" % (scan_result['hiddenService'],scan_result['identifierReport']['bitcoinAddresses']))
+        
+            sql_select_query ="SELECT id from onion WHERE url=%s"
+            value=scan_result['hiddenService'].rstrip()
+            mycursor.execute(sql_select_query,(value,))
+            record=mycursor.fetchall()
+            for row in record:
+                for addressbit in tuple(scan_result['identifierReport']['bitcoinAddresses']):
+                   urladdress="https://www.bitcoinabuse.com/api/reports/check?api_token="+bitcoinabuse_api+"&address="+addressbit
+                   response=requests.get(urladdress)
+                   time.sleep(2)
+                   bitcoinjson=response.json()
+
+                   sql_insert_query="INSERT INTO cripto (onion_id,address,reported) VALUES (%s,%s,%s)"
+                   val=(row[0],addressbit,bitcoinjson['count'])
+                   mycursor.execute(sql_insert_query,val)
+                   mydb.commit()
+                   print("Valor insertado correctamente ",val)
             if tuple(scan_result['identifierReport']['bitcoinAddresses']) in bitcoin_to_mint:
                 bitcoin_to_mint[tuple(scan_result['identifierReport']['bitcoinAddresses'])].append(scan_result['hiddenService'])
             else:
@@ -32,17 +57,3 @@ for address in bitcoin_to_mint:
             
             print("\t%s" % key)
 
-    #while True:
-    
-    #    try:
-            
-    #        shodan_result = shodan_client.search(ssh_key)
-    #        break
-    #    except:
-    #        time.sleep(5)
-    #        pass
-        
-   # if shodan_result['total'] > 0:
-        
-    #    for hit in shodan_result['matches']:
-    #        print("[!] Hit for %s on %s for hidden services %s" % (ssh_key,hit['ip_str'],",".join(key_to_hosts[ssh_key])))

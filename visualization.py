@@ -31,4 +31,16 @@ for json_file in file_list:
                 graph.add_node(ip,**{"node_type":"IP"})
                 graph.add_edge(scan_result['hiddenService'],ip)
 
+        if scan_result['sshKey']:
+               graph.add_node(scan_result['sshKey'],**{"node_type":"SSH"})
+               graph.add_edge(scan_result['hiddenService'],scan_result['sshKey'])
+
+        if scan_result['identifierReport']['serverVersion']:
+               graph.add_node(scan_result['identifierReport']['serverVersion'],**{"node_type":"Apache"})
+               graph.add_edge(scan_result['hiddenService'],scan_result['identifierReport']['serverVersion'])
+        if scan_result['identifierReport']['bitcoinAddresses'] is not None:
+            for bitcoin in scan_result['identifierReport']['bitcoinAddresses']:
+                graph.add_node(bitcoin,**{"node_type":"bitcoin"})
+                graph.add_edge(scan_result['hiddenService'],bitcoin)
+
 networkx.write_gexf(graph, "onionscan-with-ips.gexf")
